@@ -4,20 +4,15 @@
 
 # agent-benchmark
 
-**Performance benchmarking for agents for LLM agents. Zero external dependencies.**
+**Performance benchmarking for LLM agents — timed runs, statistical summaries, regression detection.**
 
-[![PyPI](https://img.shields.io/pypi/v/agent-benchmark?color=blue)](https://pypi.org/project/agent-benchmark/)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://python.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Zero deps](https://img.shields.io/badge/dependencies-zero-brightgreen)](pyproject.toml)
+[![PyPI version](https://img.shields.io/pypi/v/agent-benchmark?color=yellow&style=flat-square)](https://pypi.org/project/agent-benchmark/) [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square)](https://python.org) [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE) [![Tests](https://img.shields.io/badge/tests-passing-brightgreen?style=flat-square)](#)
 
 ---
 
 ## The Problem
 
-Production LLM agents fail silently. Without performance benchmarking for agents, you get undefined behaviour at scale — race conditions, lost state, cascading failures, and no way to debug what went wrong.
-
-`agent-benchmark` gives you a production-ready performance benchmarking for agents primitive with a clean API, tested edge cases, and zero configuration.
+Without benchmarks, performance regressions ship silently. A 40% latency increase between versions is invisible until it hits production. Repeatable, baseline-aware benchmarks catch regressions before users do.
 
 ## Installation
 
@@ -25,88 +20,80 @@ Production LLM agents fail silently. Without performance benchmarking for agents
 pip install agent-benchmark
 ```
 
-Or from source:
-
-```bash
-git clone https://github.com/darshjme/agent-benchmark.git
-cd agent-benchmark
-pip install -e .
-```
-
 ## Quick Start
 
 ```python
-from agent_benchmark import *  # see API reference below
+from agent_benchmark import BenchmarkResult, ComparisonResult
 
-# See examples/ directory for complete working examples
+# Initialise
+instance = BenchmarkResult(name="my_agent")
+
+# Use
+result = instance.run()
+print(result)
 ```
 
 ## API Reference
 
-The main classes and functions are defined in `agent_benchmark/__init__.py`.
+### `BenchmarkResult`
 
-Key exports: `Timed runs · p50/p95/p99 · regression detection · @benchmark`
+```python
+class BenchmarkResult:
+    name: str
+    def is_faster_than(self, other: "BenchmarkResult") -> bool:
+        """Return True if this result has a lower mean than *other*."""
+    def regression_vs(self, baseline: "BenchmarkResult", threshold: float = 0.10) -> bool:
+        """Return True if this result is more than *threshold* (default 10%) slower than baseline."""
+    def to_dict(self) -> dict[str, Any]:
+    def summary(self) -> str:
+```
 
-All classes follow a consistent interface:
-- Instantiate with sensible defaults
-- Compose with other arsenal libraries
-- Zero external dependencies required
+### `ComparisonResult`
 
-See the source code and `tests/` directory for verified usage examples.
+```python
+class ComparisonResult:
+    result_a: BenchmarkResul
+```
+
 
 ## How It Works
 
+### Flow
+
 ```mermaid
 flowchart LR
-    A[Agent Task] --> B[agent-benchmark]
-    B --> C{Decision}
-    C -->|success| D[✅ Result]
-    C -->|failure| E[⚠️ Handle]
-    E --> B
-
-    style B fill:#161b22,stroke:#58a6ff,stroke-width:2,color:#58a6ff
-    style D fill:#1a3320,stroke:#238636,color:#3fb950
-    style E fill:#3d1a1a,stroke:#f85149,color:#f85149
+    A[User Code] -->|create| B[BenchmarkResult]
+    B -->|configure| C[ComparisonResult]
+    C -->|execute| D{Success?}
+    D -->|yes| E[Return Result]
+    D -->|no| F[Error Handler]
+    F --> G[Fallback / Retry]
+    G --> C
 ```
+
+### Sequence
 
 ```mermaid
 sequenceDiagram
-    participant Agent
-    participant AgentBenchmark as agent-benchmark
-    participant Output
+    participant App
+    participant BenchmarkResult
+    participant ComparisonResult
 
-    Agent->>AgentBenchmark: initialize()
-    AgentBenchmark-->>Agent: ready
-
-    loop Agent Run
-        Agent->>AgentBenchmark: process(input)
-        AgentBenchmark-->>Agent: result
-    end
-
-    Agent->>Output: deliver(result)
+    App->>+BenchmarkResult: initialise()
+    BenchmarkResult->>+ComparisonResult: configure()
+    ComparisonResult-->>-BenchmarkResult: ready
+    App->>+BenchmarkResult: run(context)
+    BenchmarkResult->>+ComparisonResult: execute(context)
+    ComparisonResult-->>-BenchmarkResult: result
+    BenchmarkResult-->>-App: WorkflowResult
 ```
 
 ## Philosophy
 
-The student who measures their progress becomes the master. agent-benchmark is that measurement.
+> The Gita's *svadharma* demands we measure ourselves against our own standard, not another's; benchmarks are that mirror.
 
 ---
 
-## Part of the Arsenal
-
-`agent-benchmark` is one of six production libraries for LLM agents:
-
-| Library | Purpose |
-|---------|---------|
-| [herald](https://github.com/darshjme/herald) | Semantic task routing |
-| [engram](https://github.com/darshjme/engram) | Agent memory |
-| [sentinel](https://github.com/darshjme/sentinel) | ReAct loop guards |
-| [verdict](https://github.com/darshjme/verdict) | Agent evaluation |
-| [agent-guardrails](https://github.com/darshjme/agent-guardrails) | Output validation |
-| [agent-observability](https://github.com/darshjme/agent-observability) | Tracing & metrics |
-
-→ [arsenal](https://github.com/darshjme/arsenal) — the complete stack
-
----
+*Part of the [arsenal](https://github.com/darshjme/arsenal) — production stack for LLM agents.*
 
 *Built by [Darshankumar Joshi](https://github.com/darshjme), Gujarat, India.*
